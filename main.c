@@ -31,37 +31,44 @@ int hx, hy;//집의 위치
 int tmin_move = 9999999;//도둑 최소 이동 횟수
 int ptmin_move = 9999999;//경찰 최소 이동 횟수
 
-int bfs(int px, int py, int tx, int ty, int cnt) //px, py : 경찰의 좌표, tx, ty : 도둑의 좌표, hx, hy: 집의 좌표
-//이 함수에서 0일 리턴하는 경우는 진행이 불가능한 경우이다.
+void bfs(int px, int py, int tx, int ty, int cnt) //px, py : 경찰의 좌표, tx, ty : 도둑의 좌표, hx, hy: 집의 좌표
 //1을 리턴하는 경우는 도둑이 무사히 집에 도착할 수 있는 경우이다.
 //1은 정상적으로 도착을 한 경우이다.
 //만약 진행도중 cnt가 최소 이동 횟수를 넘으면 그 함수는 진행하지 않는다.
-//만약 경찰이 도둑의 집까지 도착하는 최소 이동 횟수보다 적으면 도둑은 집에 못 온다.
+//만약 경찰이 도둑의 집까지 도착하는 최소 이동 횟수보다 적거나 같으면 도둑은 집에 못 온다. -> 동시에 도착하면 도둑의 패배
 
 //즉 이 문제는 도둑과 경찰의 최소를 겨루는 것이 쟁점이다.
 {
-    if ((px > m || py > n || px < 0 || py < 0) || (tx > m || ty > n || tx < 0 || ty < 0))//좌표의 범위 유효성 검사
-        return 0;
+    if ((px > m || py > n || px < 1 || py < 1) || (tx > m || ty > n || tx < 1 || ty < 1))//좌표의 범위 유효성 검사
+        return;
     if (arr[px][py] == 'x' || arr[tx][ty] == 'x')//장애물이 있는 경우
-        return 0;
+        return;
     if (pvisit[px][py] || tvisit[tx][ty])//경찰이나 도둑이 한번이라도 방문 했을 경우
-        return 0;
-    if ((px == hx && py == hy) || (tx == px && ty == py))//경찰이 집에 먼저 도착했을 경우, 도둑이 경찰에 잡혔을 경우
-        return 0;
-    if (cnt > tmin_move)//이동 횟수가 최소 이동 횟수를 넘었을 경우
-        return 0;
-    if (tx == hx && ty == hy)//도둑이 집에 먼저 도착했을 경우
+        return;
+
+
+    if (tx == px && ty == py)//도둑이 경찰에 잡혔을 경우
+        return;
+
+    if (tx == hx && ty == hy)//도둑이 집에 도착했을 경우
     {
-        tmin_move = cnt;
-        return 1;
-    }   
+        if (cnt < tmin_move)//이동 횟수가 최소 이동 횟수보다 적을 경우
+            tmin_move = cnt;
+        return;
+    }  
+    else if (px == hx && py == hy)//경찰이 집에 도착했을 경우
+    {
+        if (cnt < ptmin_move)//이동 횟수가 최소 이동 횟수보다 적을 경우
+            ptmin_move = cnt;
+        return;
+    }
 
-    int pmx[4] = {1, 0, -1, 0};//경찰의 x 이동 좌표
-    int pmy[4] = {0, 1, 0, -1};//경찰의 y 이동 좌표
-    int tmx[4] = {1, 0, -1, 0};//도둑의 x 이동 좌표
-    int tmy[4] = {0, 1, 0, -1};//도둑의 y 이동 좌표
+    
 
-    int possible = 0;
+    int mx[4] = {-1, 1, 0, 0};// x 이동 좌표
+    int my[4] = {0,  0, -1, 1};// y 이동 좌표
+    
+
 
     pvisit[px][py] = 1;
     tvisit[tx][ty] = 1;
@@ -69,12 +76,12 @@ int bfs(int px, int py, int tx, int ty, int cnt) //px, py : 경찰의 좌표, tx
     {
         for (int j = 1; j <= 4; j++)
         {
-            possible += bfs(px + pmx[i - 1], py + pmy[i - 1], tx + tmx[j - 1], ty + tmy[j - 1], cnt + 1);
+            bfs(px + mx[i - 1], py + my[i - 1], tx + mx[j - 1], ty + my[j - 1], cnt + 1);
         }
     }
     pvisit[px][py] = 0;
     tvisit[tx][ty] = 0;  
-    return possible;;  
+    return; 
 }
 
 int main()
@@ -108,8 +115,8 @@ int main()
         }
     }
 
-    int result = bfs(px, py, tx, ty, 0);//도둑이 집에 도착할 수 있는지 확인한다.
-    if (result == 0)//도둑이 집에 도착할 수 없는 경우
+    bfs(px, py, tx, ty, 0);//도둑이 집에 도착할 수 있는지 확인한다.
+    if (tmin_move >= ptmin_move)//도둑이 집에 도착할 수 없는 경우이거나 집에 도착할 수 없는 경우
         printf("-1");
     else//도둑이 집에 도착할 수 있는 경우
         printf("%d", tmin_move);
