@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include<stdio.h>
 
 /*
 문제 설명: 헉헉! 도둑인 성민이는 감옥에서 겨우 탈출했다.
@@ -17,99 +17,152 @@
 출력 조건: 성민이가 집에 도착할 수 있는지의 여부와 집에 도착하기 위한 최소 이동횟수를 구하라.
         성민이가 집에 도착할 수 없을 경우에는 -1을 출력하면 된다.
         성민이가 집에 도착할 수 있을 경우에는 집에 도착하기 위한 최소 이동횟수를 출력하면 된다.
+
+본 코드에서 경찰을 정수로 표현하면 1이다.
+본 코드에서 도둑을` 정수로 표현하면 -1이다.
 */
 
-char arr[10000][10000];//초기 위치 정보 및 대피소 정보를 담을 배열
+int n, m;
+char arr[10000][10000];//배열 
 
-int n, m;//배열의 크기
+int visited[10000][10000];//방문했는지 체크
 
-int pvisit[1000][1000] ={0};//경찰의 위치 방문 여부
-int tvisit[1000][1000] = {0};//도둑의 위치 방문 여부
+int hx,hy;//집의 위치
 
-int hx, hy;//집의 위치
+int cnt_que[10000]={-1},px_que[10000]={-1},py_que[10000]={-1},tx_que[10000]={-1},ty_que[10000] = {-1};//값들의 큐
+int qi = 0, qj = 1; //qi:빼내야할 값이 있는 번호, qj: 값을 넣어야하는 위치
 
-int tmin_move = 9999999;//도둑 최소 이동 횟수
-int ptmin_move = 9999999;//경찰 최소 이동 횟수
-
-int checking(int px, int py, int tx, int ty, int cnt)
+void que_output(int *cnt, int *px, int *py, int *tx, int *ty)
 {
-    /* 
-    다음 좌표의 유효성 검사: 
-    리턴 값이 0일 경우 둘의 모두 좌표에 문제가
-    리턴 값이 -1일 경우 도둑의 좌표에 문제가
-    리턴 값이 -2일 경우 경찰의 좌표에 문제가
-    리턴 값이 1일 경우 둘의 좌표는 유효하다
+    /*
+        큐에서 값을 빼내어 변수에 대입 시켜줌
     */
-    if ((px > m || py > n || px < 1 || py < 1))//좌표의 범위 유효성 검사(경찰) -> 불가의 경우
-        return -2;
-    if ((tx > m || ty > n || tx < 1 || ty < 1))//좌표의 범위 유효성 검사(도둑) -> 불가의 경우
-        return -1;
-    if (arr[px][py] == 'x' || arr[tx][ty] == 'x')//장애물이 있는 경우
-        return;
-    if (pvisit[px][py] || tvisit[tx][ty])//경찰이나 도둑이 한번이라도 방문 했을 경우
-        return;
-
-
-    if (tx == px && ty == py)//도둑이 경찰에 잡혔을 경우
-        return;
-
-    if (tx == hx && ty == hy)//도둑이 집에 도착했을 경우
-    {
-        if (cnt < tmin_move)//이동 횟수가 최소 이동 횟수보다 적을 경우
-            tmin_move = cnt;
-        return;
-    }  
-    else if (px == hx && py == hy)//경찰이 집에 도착했을 경우
-    {
-        if (cnt < ptmin_move)//이동 횟수가 최소 이동 횟수보다 적을 경우
-            ptmin_move = cnt;
-        return;
-    }
+    *cnt = cnt_que[qi];
+    cnt_que[qi] = -1;//-1인 이유는 0도 좌표가 가능하기 때문에 이것을 설정해준다.
+    *px = px_que[qi];
+    px_que[qi] = -1;
+    *py = py_que[qi];
+    py_que[qi] = -1;
+    *tx = tx_que[qi];
+    tx_que[qi] = -1;
+    *ty = ty_que[qi];
+    qi = (qi + 1) % 10000;
 }
 
-void bfs(int px, int py, int tx, int ty, int cnt) //px, py : 경찰의 좌표, tx, ty : 도둑의 좌표, hx, hy: 집의 좌표
-//1을 리턴하는 경우는 도둑이 무사히 집에 도착할 수 있는 경우이다.
-//1은 정상적으로 도착을 한 경우이다.
-//만약 진행도중 cnt가 최소 이동 횟수를 넘으면 그 함수는 진행하지 않는다.
-//만약 경찰이 도둑의 집까지 도착하는 최소 이동 횟수보다 적거나 같으면 도둑은 집에 못 온다. -> 동시에 도착하면 도둑의 패배
-
-//즉 이 문제는 도둑과 경찰의 최소를 겨루는 것이 쟁점이다.
+void que_input(int cnt, int px, int py, int tx, int ty)
 {
+    /*
+        큐에 값을 넣어줌
+    */
 
+    if (cnt_que[qj] == -1)
+    {
+        printf("x\n");
+        return;
+    }//큐가 가득 찼을 경우 오류(Only for debug)
+    
+    cnt_que[qj] = cnt;
+    px_que[qj] = px;
+    py_que[qj] = py;
+    tx_que[qj] = tx;
+    ty_que[qj] = ty;
+    qj = (qj + 1) % 10000;
+}
 
-    int mx[4] = {0, 1, -1, 0};// x 이동 좌표
-    int my[4] = {1, 0, 0, -1};// y 이동 좌표
+int objchecking(int x, int y)
+{
+    /*
+        검사항목
+        1. 좌표의 유효성
+        2. 방문의 유효성
+        3. 장애물의 유효성
+        4. 다른 객체와의 충돌 유효성(얘는 for에서 하는 걸로)
+    */
+    if (x < 0 || x > n-1 || y < 0 || y > m-1)
+        return 0;
+    if (visited[x][y] == 1)
+        return 0;
+    if (arr[x][y] == '#')
+        return 0;
+    return 1;
+    
+}
+
+int nodechecking(int px, int py, int tx, int ty)
+{
+    
+}
+
+int BFS(int cnt, int px, int py, int tx, int ty)
+{
+    int mx[4] = {-1,1,0,0};
+    int my[4] = {0,0,-1,1};//이동 좌표(상하좌우)
+
+    int ppl[5] = {0};//경찰의 이동 가능 좌표(상하좌우)
+    int ptl[5] = {0};//도둑의 이동 가능 좌표(상하좌우)
+    for (int i = 0 ; i < 4; i++)
+    {
+        int pc = checking(px + mx[i], py + my[i]);
+        int tc = checking(tx + mx[i], ty + my[i]);
+        ppl[i] = pc, ppl[4] += pc;
+        ptl[i] = tc, ptl[4] += tc;//이동 가능한 곳이 하나라도 있는가
+    }  
+
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            if (ppl[4] && ptl[4] == 0)//경찰이 이동 가능하고 도둑은 불가능할 때
+            {
+                if (ppl[i])//경찰이 이동가능한 경우
+                {
+                    que_input(cnt, px + mx[i], py + my[i], tx, ty);
+                    visited[px + mx[i]][py + my[i]] = 1;
+                }
+            }
+            else if (ppl[4] == 0 && ptl[4])//경찰이 이동이 불가능하고 도둑은 가능할 때
+            {
+                if (ptl[i])//도둑이 이동가능한 경우
+                {
+                    que_input(cnt, px, py, tx + mx[i], ty + my[i]);
+                    visited[tx + mx[i]][ty + my[i]] = 1;
+                }
+            }
+            else if (ppl[4] && ptl[4])//둘 다 이동 가능한 경우가 있을 때
+            {
+                if (ppl[i] && ptl[i])//둘 다 이동 가능할 때
+                {
+                    que_input(cnt, px + mx[i], py + my[i], tx + mx[i], ty + my[i]);
+                    visited[px + mx[i]][py + my[i]] = 1;
+                    visited[tx + mx[i]][ty + my[i]] = 1;
+                }
+            }
+            else continue;
+        }
+    }
     
 
 
-    pvisit[px][py] = 1;
-    tvisit[tx][ty] = 1;
-    for (int i = 1; i <= 4; i++)//재귀 함수 호출
-    {
-        int ntx, nty;//다음 좌표
-        int npx, npy;
-
-        for (int j = 1; j <= 4; j++)
-        {
-            bfs(px + mx[i - 1], py + my[i - 1], tx + mx[j - 1], ty + my[j - 1], cnt + 1);
-        }
-    }
-    pvisit[px][py] = 0;
-    tvisit[tx][ty] = 0;  
-    return; 
+    int ncnt = 0, npx = 0, npy = 0, ntx = 0, nty = 0;//다음 값들
+    que_output(&ncnt, &npx, &npy, &ntx, &nty);//값 대입
+    if (ncnt == -1) return -1;//다음에 실행할 값이 없을 경우 종료
+    else return BFS(ncnt, npx, npy, ntx, nty);//다음 값들을 넣어준다.
 }
 
 int main()
 {
-    
-    scanf("%d %d", &n, &m);
+    int px,py;//경찰의 x,y;
+    int tx,ty;//도둑의 X,y;
 
-    int px, py, tx, ty;//경찰의 x, y 좌표, 도둑의 x, y 좌표
-
-    
-    for (int i = 1; i <= n; i++)//초기 위치 정보를 입력받는다.
+    for (int i = 0; i < 10000; i++)
     {
-        for (int j = 1; j <= m; j++)
+        cnt_que[i] = -1, px_que[i] = -1, py_que[i] = -1, tx_que[i] = -1, ty_que[i] = -1;
+    }
+
+    scanf("%d %d", &n, &m);
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < m; j++)
         {
             scanf(" %c", &arr[i][j]);
             if (arr[i][j] == 't')
@@ -130,10 +183,14 @@ int main()
         }
     }
 
-    bfs(px, py, tx, ty, 0);//도둑이 집에 도착할 수 있는지 확인한다.
-    printf("\n%d %d", ptmin_move, tmin_move);
-    if (tmin_move >= ptmin_move)//도둑이 집에 도착할 수 없는 경우이거나 집에 도착할 수 없는 경우
+    int val = BFS(0, px, py, tx, ty);
+    if (val == -1)
+    {
         printf("-1");
-    else//도둑이 집에 도착할 수 있는 경우
-        printf("%d", tmin_move);
+    }
+    else
+    {
+        printf("%d",val);
+    }
+    return 0;
 }
